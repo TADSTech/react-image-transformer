@@ -1,0 +1,5 @@
+export * as fileFeatures from './file'
+export * as editFeatures from './edit'
+export * as filterFeatures from './filters'
+export * as toolFeatures from './tools'
+export * as settingsFeatures from './settings'
