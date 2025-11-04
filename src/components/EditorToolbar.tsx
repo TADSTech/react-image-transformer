@@ -123,14 +123,13 @@ export function EditorToolbar({ onMenuAction, canvasRef, fileName, canUndo, canR
       label: 'Filters', 
       icon: <Palette className="w-5 h-5" />,
       items: [
-        { id: 'brightness', label: 'Brightness' },
-        { id: 'contrast', label: 'Contrast' },
-        { id: 'saturation', label: 'Saturation' },
+        { id: 'filters-panel', label: 'Adjust Filters' },
         { id: 'div1', label: '', divider: true },
-        { id: 'grayscale', label: 'Grayscale' },
-        { id: 'sepia', label: 'Sepia' },
-        { id: 'invert', label: 'Invert Colors' },
-        { id: 'blur', label: 'Blur' },
+        { id: 'vintage', label: 'Vintage' },
+        { id: 'pixelate', label: 'Pixelate' },
+        { id: 'edge-detect', label: 'Edge Detection' },
+        { id: 'emboss', label: 'Emboss' },
+        { id: 'sharpen', label: 'Sharpen' },
       ]
     },
     { 
@@ -138,6 +137,8 @@ export function EditorToolbar({ onMenuAction, canvasRef, fileName, canUndo, canR
       label: 'Tools', 
       icon: <Crop className="w-5 h-5" />,
       items: [
+        { id: 'draw', label: 'Draw / Pen' },
+        { id: 'div1', label: '', divider: true },
         { id: 'crop', label: 'Crop' },
         { id: 'resize', label: 'Resize' },
         { id: 'compress', label: 'Compress' },

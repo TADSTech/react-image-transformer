@@ -10,7 +10,7 @@ export default function About() {
     <main className="min-h-screen bg-(--color-bg) flex flex-col">
       {/* Header with back button */}
       <header className="border-b border-(--color-border) p-4 sticky top-0 z-40 bg-(--color-bg)">
-        <div className="max-w-3xl mx-auto flex items-center gap-4">
+        <div className="max-w-3xl mx-2 flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-(--color-text) hover:text-(--color-primary) transition-colors"
@@ -18,8 +18,7 @@ export default function About() {
             <ArrowLeft className="w-5 h-5" />
             <span>Back</span>
           </button>
-          <h1 className="text-2xl font-bold text-(--color-text)">About RI-Transformer</h1>
-        </div>
+         </div>
       </header>
 
       {/* Main Content */}
@@ -91,7 +90,7 @@ export default function About() {
           {/* Links Section */}
           <section className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="https://github.com"
+              href="https://github.com/tadstech/react-image-transformer"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 px-6 py-3 bg-(--color-primary) text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
@@ -100,7 +99,7 @@ export default function About() {
               GitHub Repository
             </a>
             <a
-              href="#"
+              href="https://tadstech.web.app"
               className="flex items-center justify-center gap-2 px-6 py-3 bg-(--color-secondary) text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
             >
               <Globe className="w-5 h-5" />

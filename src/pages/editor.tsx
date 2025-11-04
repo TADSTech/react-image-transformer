@@ -8,8 +8,10 @@ import { ResizeModal } from '../components/ResizeModal'
 import { CompressModal } from '../components/CompressModal'
 import { PreferencesModal } from '../components/PreferencesModal'
 import { ExportQualityModal } from '../components/ExportQualityModal'
+import { FilterPanel } from '../components/FilterPanel'
+import { DrawingTool } from '../components/DrawingTool'
 import TopBar from '../components/TopBar'
-import { editFeatures, toolFeatures, settingsFeatures } from '../features'
+import { editFeatures, toolFeatures, settingsFeatures, filterFeatures } from '../features'
 
 export default function Editor() {
   const { state } = useLocation() as unknown as { state?: { previewUrl?: string; fileName?: string } }
@@ -37,13 +39,33 @@ export default function Editor() {
   const { setDirty, consumePending } = useUnsaved()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+  
+  // Combined editor state for undo/redo
+  interface EditorState {
+    transform: editFeatures.TransformState
+    filters: filterFeatures.FilterSettings
+  }
+  
+  const defaultFilters: filterFeatures.FilterSettings = {
+    brightness: 1,
+    contrast: 1,
+    saturation: 1,
+    grayscale: 0,
+    sepia: 0,
+    invert: 0,
+    blur: 0,
+  }
+  
   const [transform, setTransform] = useState<editFeatures.TransformState>(editFeatures.resetTransform())
-  const [history, setHistory] = useState<editFeatures.HistoryManager<editFeatures.TransformState> | null>(null)
+  const [filters, setFilters] = useState<filterFeatures.FilterSettings>(defaultFilters)
+  const [history, setHistory] = useState<editFeatures.HistoryManager<EditorState> | null>(null)
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [resizeModalOpen, setResizeModalOpen] = useState(false)
   const [compressModalOpen, setCompressModalOpen] = useState(false)
+  const [drawingToolOpen, setDrawingToolOpen] = useState(false)
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false)
   const [exportQualityModalOpen, setExportQualityModalOpen] = useState(false)
   const [undoLimit, setUndoLimit] = useState(10)
@@ -71,15 +93,19 @@ export default function Editor() {
       const img = new Image() 
       img.onload = () => {
         originalImageRef.current = img
-        const initialTransform = editFeatures.resetTransform()
-        const historyManager = new editFeatures.HistoryManager(initialTransform, undoLimit)
+        const initialState: EditorState = {
+          transform: editFeatures.resetTransform(),
+          filters: defaultFilters,
+        }
+        const historyManager = new editFeatures.HistoryManager(initialState, undoLimit)
         setHistory(historyManager)
-        setTransform(initialTransform)
+        setTransform(initialState.transform)
+        setFilters(initialState.filters)
         setCanUndo(false)
         setCanRedo(false)
         
         // Draw initial image
-        editFeatures.applyTransform(canvasRef.current!, initialTransform, img)
+        editFeatures.applyTransform(canvasRef.current!, initialState.transform, img)
       }
       img.src = previewUrl
     }
@@ -91,6 +117,14 @@ export default function Editor() {
       editFeatures.applyTransform(canvasRef.current, transform, originalImageRef.current)
     }
   }, [transform])
+
+  // Apply CSS filters when filter state changes
+  useEffect(() => {
+    if (canvasRef.current && filters) {
+      const filterString = filterFeatures.cssFilterString(filters)
+      canvasRef.current.style.filter = filterString
+    }
+  }, [filters])
 
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
@@ -130,7 +164,8 @@ export default function Editor() {
         if (history.canUndo()) {
           const prev = history.undo()
           if (prev) {
-            setTransform(prev)
+            setTransform(prev.transform)
+            setFilters(prev.filters)
             setCanUndo(history.canUndo())
             setCanRedo(history.canRedo())
           }
@@ -140,7 +175,8 @@ export default function Editor() {
         if (history.canRedo()) {
           const next = history.redo()
           if (next) {
-            setTransform(next)
+            setTransform(next.transform)
+            setFilters(next.filters)
             setCanUndo(history.canUndo())
             setCanRedo(history.canRedo())
           }
@@ -149,8 +185,9 @@ export default function Editor() {
       case 'rotate-left':
         {
           const newTransform = editFeatures.rotate(transform, -90)
+          const newState: EditorState = { transform: newTransform, filters }
           setTransform(newTransform)
-          history.push(newTransform)
+          history.push(newState)
           setCanUndo(history.canUndo())
           setCanRedo(history.canRedo())
         }
@@ -158,8 +195,9 @@ export default function Editor() {
       case 'rotate-right':
         {
           const newTransform = editFeatures.rotate(transform, 90)
+          const newState: EditorState = { transform: newTransform, filters }
           setTransform(newTransform)
-          history.push(newTransform)
+          history.push(newState)
           setCanUndo(history.canUndo())
           setCanRedo(history.canRedo())
         }
@@ -167,8 +205,9 @@ export default function Editor() {
       case 'flip-h':
         {
           const newTransform = editFeatures.flipHorizontal(transform)
+          const newState: EditorState = { transform: newTransform, filters }
           setTransform(newTransform)
-          history.push(newTransform)
+          history.push(newState)
           setCanUndo(history.canUndo())
           setCanRedo(history.canRedo())
         }
@@ -176,8 +215,9 @@ export default function Editor() {
       case 'flip-v':
         {
           const newTransform = editFeatures.flipVertical(transform)
+          const newState: EditorState = { transform: newTransform, filters }
           setTransform(newTransform)
-          history.push(newTransform)
+          history.push(newState)
           setCanUndo(history.canUndo())
           setCanRedo(history.canRedo())
         }
@@ -185,11 +225,16 @@ export default function Editor() {
       case 'reset':
         {
           const newTransform = editFeatures.resetTransform()
+          const newState: EditorState = { transform: newTransform, filters: defaultFilters }
           setTransform(newTransform)
-          history.push(newTransform)
+          setFilters(defaultFilters)
+          history.push(newState)
           setCanUndo(history.canUndo())
           setCanRedo(history.canRedo())
         }
+        break
+      case 'draw':
+        setDrawingToolOpen(true)
         break
       case 'crop':
         setCropModalOpen(true)
@@ -205,6 +250,36 @@ export default function Editor() {
         break
       case 'quality':
         setExportQualityModalOpen(true)
+        break
+      // Filter panel for adjustable filters
+      case 'filters-panel':
+        setFilterPanelOpen(true)
+        break
+      // Advanced canvas-based filters
+      case 'vintage':
+        handleAdvancedFilter('vintage')
+        break
+      case 'pixelate':
+        handleAdvancedFilter('pixelate')
+        break
+      case 'edge-detect':
+        handleAdvancedFilter('edge-detect')
+        break
+      case 'emboss':
+        handleAdvancedFilter('emboss')
+        break
+      case 'sharpen':
+        handleAdvancedFilter('sharpen')
+        break
+      // Filter menu items - open filter panel
+      case 'brightness':
+      case 'contrast':
+      case 'saturation':
+      case 'grayscale':
+      case 'sepia':
+      case 'invert':
+      case 'blur':
+        setFilterPanelOpen(true)
         break
       case 'about':
         // Save editor state to sessionStorage before navigating
@@ -225,10 +300,91 @@ export default function Editor() {
     setUndoLimit(prefs.undoLimit)
     // Recreate history manager with new limit
     if (history) {
-      const newHistory = new editFeatures.HistoryManager(transform, prefs.undoLimit)
+      const currentState: EditorState = { transform, filters }
+      const newHistory = new editFeatures.HistoryManager(currentState, prefs.undoLimit)
       setHistory(newHistory)
       setCanUndo(newHistory.canUndo())
       setCanRedo(newHistory.canRedo())
+    }
+  }
+
+  const handleAdvancedFilter = (filterType: string) => {
+    if (!canvasRef.current) return
+
+    // Create a copy of canvas for manipulation
+    const tempCanvas = document.createElement('canvas')
+    tempCanvas.width = canvasRef.current.width
+    tempCanvas.height = canvasRef.current.height
+    const tempCtx = tempCanvas.getContext('2d')!
+    tempCtx.drawImage(canvasRef.current, 0, 0)
+
+    // Apply the filter
+    switch (filterType) {
+      case 'vintage':
+        filterFeatures.applyVintageEffect(tempCanvas)
+        break
+      case 'pixelate':
+        filterFeatures.applyPixelateEffect(tempCanvas, 10)
+        break
+      case 'edge-detect':
+        filterFeatures.applyEdgeDetection(tempCanvas)
+        break
+      case 'emboss':
+        filterFeatures.applyEmbossEffect(tempCanvas)
+        break
+      case 'sharpen':
+        filterFeatures.applySharpenEffect(tempCanvas)
+        break
+    }
+
+    // Update canvas
+    const ctx = canvasRef.current.getContext('2d')!
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+    ctx.drawImage(tempCanvas, 0, 0)
+
+    // Update original reference and add to history
+    originalImageRef.current = tempCanvas as any
+    const newTransform = editFeatures.resetTransform()
+    setTransform(newTransform)
+    
+    if (history) {
+      const newState: EditorState = { transform: newTransform, filters }
+      history.push(newState)
+      setCanUndo(history.canUndo())
+      setCanRedo(history.canRedo())
+    }
+  }
+
+  const handleDrawingApply = (drawingCanvas: HTMLCanvasElement) => {
+    if (!canvasRef.current) return
+
+    // Update canvas with drawing
+    const ctx = canvasRef.current.getContext('2d')!
+    canvasRef.current.width = drawingCanvas.width
+    canvasRef.current.height = drawingCanvas.height
+    ctx.drawImage(drawingCanvas, 0, 0)
+
+    // Update original reference
+    originalImageRef.current = drawingCanvas as any
+
+    // Reset transform and add to history
+    const newTransform = editFeatures.resetTransform()
+    setTransform(newTransform)
+    if (history) {
+      const newState: EditorState = { transform: newTransform, filters }
+      history.push(newState)
+      setCanUndo(history.canUndo())
+      setCanRedo(history.canRedo())
+    }
+  }
+
+  const handleFilterChange = (newFilters: filterFeatures.FilterSettings) => {
+    setFilters(newFilters)
+    if (history) {
+      const newState: EditorState = { transform, filters: newFilters }
+      history.push(newState)
+      setCanUndo(history.canUndo())
+      setCanRedo(history.canRedo())
     }
   }
 
@@ -250,7 +406,8 @@ export default function Editor() {
     const newTransform = editFeatures.resetTransform()
     setTransform(newTransform)
     if (history) {
-      history.push(newTransform)
+      const newState: EditorState = { transform: newTransform, filters }
+      history.push(newState)
       setCanUndo(history.canUndo())
       setCanRedo(history.canRedo())
     }
@@ -274,7 +431,8 @@ export default function Editor() {
     const newTransform = editFeatures.resetTransform()
     setTransform(newTransform)
     if (history) {
-      history.push(newTransform)
+      const newState: EditorState = { transform: newTransform, filters }
+      history.push(newState)
       setCanUndo(history.canUndo())
       setCanRedo(history.canRedo())
     }
@@ -301,7 +459,8 @@ export default function Editor() {
           const newTransform = editFeatures.resetTransform()
           setTransform(newTransform)
           if (history) {
-            history.push(newTransform)
+            const newState: EditorState = { transform: newTransform, filters }
+            history.push(newState)
             setCanUndo(history.canUndo())
             setCanRedo(history.canRedo())
           }
@@ -350,6 +509,8 @@ export default function Editor() {
         <CropModal isOpen={cropModalOpen} onClose={() => setCropModalOpen(false)} onApply={handleCropApply} canvasRef={canvasRef} />
         <ResizeModal isOpen={resizeModalOpen} onClose={() => setResizeModalOpen(false)} onApply={handleResizeApply} currentWidth={canvasRef.current?.width || 0} currentHeight={canvasRef.current?.height || 0} />
         <CompressModal isOpen={compressModalOpen} onClose={() => setCompressModalOpen(false)} onApply={handleCompressApply} />
+        <DrawingTool isOpen={drawingToolOpen} onClose={() => setDrawingToolOpen(false)} onApply={handleDrawingApply} sourceCanvas={canvasRef.current} />
+        <FilterPanel isOpen={filterPanelOpen} onClose={() => setFilterPanelOpen(false)} onFilterChange={handleFilterChange} currentFilters={filters} />
         <PreferencesModal isOpen={preferencesModalOpen} onClose={() => setPreferencesModalOpen(false)} onPreferencesChange={handlePreferencesChange} />
         <ExportQualityModal isOpen={exportQualityModalOpen} onClose={() => setExportQualityModalOpen(false)} />
         

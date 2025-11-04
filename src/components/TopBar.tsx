@@ -1,5 +1,4 @@
 import { useLocation } from 'react-router-dom'
-import DarkModeToggle from './DarkModeToggle'
 import { AppWindow } from 'lucide-react';
 
 export default function TopBar() {
@@ -17,26 +16,25 @@ export default function TopBar() {
         )}
       </div>
       <div className="flex items-center gap-4">
-        <DarkModeToggle />
         <AppWindow
-          className="w-5 h-5 text-(--color-text) cursor-pointer"
+          className="hidden lg:inline-flex lg:w-5 lg:h-5 lg:text-(--color-text) lg:cursor-pointer"
           onClick={async () => {
         try {
           const doc: any = document
           const isFullscreen =
-            !!(document.fullscreenElement || doc.mozFullScreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement)
+        !!(document.fullscreenElement || doc.mozFullScreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement)
 
           if (isFullscreen) {
-            if (document.exitFullscreen) await document.exitFullscreen()
-            else if (doc.mozCancelFullScreen) await doc.mozCancelFullScreen()
-            else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen()
-            else if (doc.msExitFullscreen) await doc.msExitFullscreen()
+        if (document.exitFullscreen) await document.exitFullscreen()
+        else if (doc.mozCancelFullScreen) await doc.mozCancelFullScreen()
+        else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen()
+        else if (doc.msExitFullscreen) await doc.msExitMsFullscreen()
           } else {
-            const el: any = document.documentElement
-            if (el.requestFullscreen) await el.requestFullscreen()
-            else if (el.mozRequestFullScreen) await el.mozRequestFullScreen()
-            else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
-            else if (el.msRequestFullscreen) await el.msRequestFullscreen()
+        const el: any = document.documentElement
+        if (el.requestFullscreen) await el.requestFullscreen()
+        else if (el.mozRequestFullScreen) await el.mozRequestFullScreen()
+        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
+        else if (el.msRequestFullscreen) await el.msRequestFullscreen()
           }
         } catch (err) {
           console.error('Failed to toggle fullscreen', err)
