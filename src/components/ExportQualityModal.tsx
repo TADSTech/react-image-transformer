@@ -32,13 +32,13 @@ export function ExportQualityModal({ isOpen, onClose }: ExportQualityModalProps)
 
   return (
     <motion.div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 pb-20 sm:pb-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="bg-(--color-bg) rounded-lg p-6 max-w-md w-full shadow-xl"
+        className="bg-(--color-bg) rounded-lg p-6 max-w-md w-full shadow-xl max-h-[calc(100vh-8rem)] overflow-y-auto"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}

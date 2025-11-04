@@ -10,8 +10,10 @@ import { PreferencesModal } from '../components/PreferencesModal'
 import { ExportQualityModal } from '../components/ExportQualityModal'
 import { FilterPanel } from '../components/FilterPanel'
 import { DrawingTool } from '../components/DrawingTool'
+import { ConfirmFilterModal } from '../components/ConfirmFilterModal'
+import { ExportConfirmModal } from '../components/ExportConfirmModal'
 import TopBar from '../components/TopBar'
-import { editFeatures, toolFeatures, settingsFeatures, filterFeatures } from '../features'
+import { editFeatures, toolFeatures, settingsFeatures, filterFeatures, fileFeatures } from '../features'
 
 export default function Editor() {
   const { state } = useLocation() as unknown as { state?: { previewUrl?: string; fileName?: string } }
@@ -44,6 +46,7 @@ export default function Editor() {
   interface EditorState {
     transform: editFeatures.TransformState
     filters: filterFeatures.FilterSettings
+    canvasDataUrl?: string // Store canvas state for advanced filters
   }
   
   const defaultFilters: filterFeatures.FilterSettings = {
@@ -68,7 +71,12 @@ export default function Editor() {
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false)
   const [exportQualityModalOpen, setExportQualityModalOpen] = useState(false)
+  const [confirmFilterModalOpen, setConfirmFilterModalOpen] = useState(false)
+  const [pendingFilterType, setPendingFilterType] = useState<string>('')
+  const [pendingFilterName, setPendingFilterName] = useState<string>('')
   const [undoLimit, setUndoLimit] = useState(10)
+  const [exportConfirmOpen, setExportConfirmOpen] = useState(false)
+  const [pendingExportFormat, setPendingExportFormat] = useState<'png' | 'jpeg' | 'webp'>('png')
 
   useEffect(() => {
     if (previewUrl) {
@@ -156,6 +164,40 @@ export default function Editor() {
     setPendingAction(null)
   }
 
+  const handleExportRequested = (format: 'png' | 'jpeg' | 'webp') => {
+    setPendingExportFormat(format)
+    setExportConfirmOpen(true)
+  }
+
+  const handleExportConfirm = async () => {
+    const canvas = canvasRef?.current
+    if (!canvas) return
+
+    try {
+      const exportSettings = settingsFeatures.loadExportSettings()
+      let finalFileName = fileName || 'export'
+
+      switch (pendingExportFormat) {
+        case 'png':
+          finalFileName = finalFileName.replace(/\.[^.]+$/, '.png') || 'export.png'
+          await fileFeatures.exportCanvasAs(canvas, 'png', exportSettings.quality, finalFileName)
+          break
+        case 'jpeg':
+          finalFileName = finalFileName.replace(/\.[^.]+$/, '.jpg') || 'export.jpg'
+          await fileFeatures.exportCanvasAs(canvas, 'jpeg', exportSettings.quality, finalFileName)
+          break
+        case 'webp':
+          finalFileName = finalFileName.replace(/\.[^.]+$/, '.webp') || 'export.webp'
+          await fileFeatures.exportCanvasAs(canvas, 'webp', exportSettings.quality, finalFileName)
+          break
+      }
+    } catch (e) {
+      console.error('Export error:', e)
+    } finally {
+      setExportConfirmOpen(false)
+    }
+  }
+
   const handleToolbarAction = (actionId: string) => {
     if (!history) return
 
@@ -166,6 +208,15 @@ export default function Editor() {
           if (prev) {
             setTransform(prev.transform)
             setFilters(prev.filters)
+            // Restore canvas state if it was saved (for advanced filters)
+            if (prev.canvasDataUrl && canvasRef.current) {
+              const img = new Image()
+              img.onload = () => {
+                originalImageRef.current = img
+                editFeatures.applyTransform(canvasRef.current!, prev.transform, img)
+              }
+              img.src = prev.canvasDataUrl
+            }
             setCanUndo(history.canUndo())
             setCanRedo(history.canRedo())
           }
@@ -177,6 +228,15 @@ export default function Editor() {
           if (next) {
             setTransform(next.transform)
             setFilters(next.filters)
+            // Restore canvas state if it was saved (for advanced filters)
+            if (next.canvasDataUrl && canvasRef.current) {
+              const img = new Image()
+              img.onload = () => {
+                originalImageRef.current = img
+                editFeatures.applyTransform(canvasRef.current!, next.transform, img)
+              }
+              img.src = next.canvasDataUrl
+            }
             setCanUndo(history.canUndo())
             setCanRedo(history.canRedo())
           }
@@ -257,19 +317,19 @@ export default function Editor() {
         break
       // Advanced canvas-based filters
       case 'vintage':
-        handleAdvancedFilter('vintage')
+        requestFilterConfirmation('vintage', 'Vintage')
         break
       case 'pixelate':
-        handleAdvancedFilter('pixelate')
+        requestFilterConfirmation('pixelate', 'Pixelate')
         break
       case 'edge-detect':
-        handleAdvancedFilter('edge-detect')
+        requestFilterConfirmation('edge-detect', 'Edge Detection')
         break
       case 'emboss':
-        handleAdvancedFilter('emboss')
+        requestFilterConfirmation('emboss', 'Emboss')
         break
       case 'sharpen':
-        handleAdvancedFilter('sharpen')
+        requestFilterConfirmation('sharpen', 'Sharpen')
         break
       // Filter menu items - open filter panel
       case 'brightness':
@@ -308,6 +368,21 @@ export default function Editor() {
     }
   }
 
+  const requestFilterConfirmation = (filterType: string, filterName: string) => {
+    setPendingFilterType(filterType)
+    setPendingFilterName(filterName)
+    setConfirmFilterModalOpen(true)
+  }
+
+  const confirmApplyFilter = () => {
+    setConfirmFilterModalOpen(false)
+    if (pendingFilterType) {
+      handleAdvancedFilter(pendingFilterType)
+    }
+    setPendingFilterType('')
+    setPendingFilterName('')
+  }
+
   const handleAdvancedFilter = (filterType: string) => {
     if (!canvasRef.current) return
 
@@ -342,13 +417,21 @@ export default function Editor() {
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
     ctx.drawImage(tempCanvas, 0, 0)
 
-    // Update original reference and add to history
+    // Save the filtered canvas as the new base image
+    const canvasDataUrl = tempCanvas.toDataURL('image/png')
     originalImageRef.current = tempCanvas as any
     const newTransform = editFeatures.resetTransform()
+    const newFilters = defaultFilters // Reset filters since they're now baked in
+    
     setTransform(newTransform)
+    setFilters(newFilters)
     
     if (history) {
-      const newState: EditorState = { transform: newTransform, filters }
+      const newState: EditorState = { 
+        transform: newTransform, 
+        filters: newFilters,
+        canvasDataUrl 
+      }
       history.push(newState)
       setCanUndo(history.canUndo())
       setCanRedo(history.canRedo())
@@ -487,14 +570,145 @@ export default function Editor() {
         </div>
         
         {/* Sidebar */}
-        <aside className="hidden lg:flex flex-col w-64 bg-(--color-bg-secondary) border-l border-(--color-border) p-4">
-            <h2 className="text-lg font-medium text-(--color-text) mb-4">Image Details</h2>
-            <p className="text-sm text-(--color-text-secondary) mb-4">
-              <strong>File:</strong> {fileName || 'No file selected'}
+        <aside className="hidden lg:flex flex-col w-64 bg-(--color-bg-secondary) border-l border-(--color-border) overflow-y-auto pb-20">
+          <div className="p-4 border-b border-(--color-border)">
+            <h2 className="text-lg font-semibold text-(--color-text) mb-3">Image Details</h2>
+            <div className="space-y-2 text-sm text-(--color-text-secondary)">
+              <div>
+                <span className="font-medium text-(--color-text)">File:</span>
+                <p className="truncate">{fileName || 'untitled'}</p>
+              </div>
+              {canvasRef.current && (
+                <>
+                  <div>
+                    <span className="font-medium text-(--color-text)">Dimensions:</span>
+                    <p>{canvasRef.current.width} × {canvasRef.current.height}px</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-(--color-text)">Aspect Ratio:</span>
+                    <p>{(canvasRef.current.width / canvasRef.current.height).toFixed(2)}:1</p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 border-b border-(--color-border)">
+            <h3 className="text-sm font-semibold text-(--color-text) mb-3">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleToolbarAction('undo')}
+                disabled={!canUndo}
+                className="flex flex-col items-center gap-1 p-2 rounded bg-(--color-bg) border border-(--color-border) hover:bg-(--color-bg-secondary) disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Undo (Ctrl+Z)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+                <span className="text-xs">Undo</span>
+              </button>
+              <button
+                onClick={() => handleToolbarAction('redo')}
+                disabled={!canRedo}
+                className="flex flex-col items-center gap-1 p-2 rounded bg-(--color-bg) border border-(--color-border) hover:bg-(--color-bg-secondary) disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Redo (Ctrl+Y)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+                </svg>
+                <span className="text-xs">Redo</span>
+              </button>
+            </div>
+            <p className="text-xs text-(--color-text-secondary) mt-2 text-center">
+              {history && canUndo ? `${history.getState().past.length - 1} change${history.getState().past.length - 1 !== 1 ? 's' : ''}` : 'No changes yet'}
             </p>
-          <div className="flex flex-col gap-3">
-            <button className="btn-primary" onClick={() => navigate(-1)}>Back</button>
-            <button className="btn-accent" onClick={() => { setDirty(false); navigate('/') }}>Finish</button>
+          </div>
+
+          <div className="p-4 border-b border-(--color-border)">
+            <h3 className="text-sm font-semibold text-(--color-text) mb-3">Transform</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleToolbarAction('rotate-left')}
+                className="flex flex-col items-center gap-1 p-2 rounded bg-(--color-bg) border border-(--color-border) hover:bg-(--color-bg-secondary) transition-colors"
+                title="Rotate Left 90°"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+                <span className="text-xs">Rotate ↶</span>
+              </button>
+              <button
+                onClick={() => handleToolbarAction('rotate-right')}
+                className="flex flex-col items-center gap-1 p-2 rounded bg-(--color-bg) border border-(--color-border) hover:bg-(--color-bg-secondary) transition-colors"
+                title="Rotate Right 90°"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+                </svg>
+                <span className="text-xs">Rotate ↷</span>
+              </button>
+              <button
+                onClick={() => handleToolbarAction('flip-h')}
+                className="flex flex-col items-center gap-1 p-2 rounded bg-(--color-bg) border border-(--color-border) hover:bg-(--color-bg-secondary) transition-colors"
+                title="Flip Horizontal"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                <span className="text-xs">Flip H</span>
+              </button>
+              <button
+                onClick={() => handleToolbarAction('flip-v')}
+                className="flex flex-col items-center gap-1 p-2 rounded bg-(--color-bg) border border-(--color-border) hover:bg-(--color-bg-secondary) transition-colors"
+                title="Flip Vertical"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+                <span className="text-xs">Flip V</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 border-b border-(--color-border)">
+            <h3 className="text-sm font-semibold text-(--color-text) mb-3">Quick Export</h3>
+            <div className="space-y-2">
+              <button
+                onClick={() => handleExportRequested('png')}
+                className="w-full p-2 text-sm rounded bg-(--color-primary) text-white hover:opacity-90 transition-opacity"
+              >
+                Export as PNG
+              </button>
+              <button
+                onClick={() => handleExportRequested('jpeg')}
+                className="w-full p-2 text-sm rounded bg-(--color-bg) border border-(--color-border) hover:bg-(--color-bg-secondary) transition-colors"
+              >
+                Export as JPEG
+              </button>
+              <button
+                onClick={() => handleExportRequested('webp')}
+                className="w-full p-2 text-sm rounded bg-(--color-bg) border border-(--color-border) hover:bg-(--color-bg-secondary) transition-colors"
+              >
+                Export as WebP
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 mt-auto">
+            <div className="space-y-2">
+              <button
+                onClick={() => handleToolbarAction('reset')}
+                className="w-full p-2 text-sm rounded bg-(--color-bg) border border-(--color-border) hover:bg-(--color-bg-secondary) transition-colors"
+              >
+                Reset All Changes
+              </button>
+              <button
+                onClick={() => { setDirty(false); navigate('/') }}
+                className="w-full p-2 text-sm rounded bg-(--color-accent) text-white hover:opacity-90 transition-opacity"
+              >
+                Finish & Return Home
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -513,8 +727,25 @@ export default function Editor() {
         <FilterPanel isOpen={filterPanelOpen} onClose={() => setFilterPanelOpen(false)} onFilterChange={handleFilterChange} currentFilters={filters} />
         <PreferencesModal isOpen={preferencesModalOpen} onClose={() => setPreferencesModalOpen(false)} onPreferencesChange={handlePreferencesChange} />
         <ExportQualityModal isOpen={exportQualityModalOpen} onClose={() => setExportQualityModalOpen(false)} />
+        <ConfirmFilterModal 
+          isOpen={confirmFilterModalOpen} 
+          filterName={pendingFilterName}
+          onConfirm={confirmApplyFilter}
+          onCancel={() => {
+            setConfirmFilterModalOpen(false)
+            setPendingFilterType('')
+            setPendingFilterName('')
+          }}
+        />
+        <ExportConfirmModal
+          isOpen={exportConfirmOpen}
+          format={pendingExportFormat}
+          fileName={fileName}
+          onConfirm={handleExportConfirm}
+          onCancel={() => setExportConfirmOpen(false)}
+        />
         
-        <EditorToolbar onMenuAction={handleToolbarAction} canvasRef={canvasRef} fileName={fileName} canUndo={canUndo} canRedo={canRedo} />
+        <EditorToolbar onMenuAction={handleToolbarAction} onExportRequested={handleExportRequested} canvasRef={canvasRef} fileName={fileName} canUndo={canUndo} canRedo={canRedo} />
       </main>
     </div>
   )

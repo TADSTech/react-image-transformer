@@ -7,7 +7,7 @@ import {
   Palette, 
   Settings
 } from 'lucide-react'
-import { fileFeatures, settingsFeatures } from '../features'
+import { fileFeatures } from '../features'
 
 export interface MenuItem {
   id: string
@@ -25,13 +25,14 @@ export interface SubMenuItem {
 
 interface EditorToolbarProps {
   onMenuAction?: (actionId: string) => void
+  onExportRequested?: (format: 'png' | 'jpeg' | 'webp') => void
   canvasRef?: React.RefObject<HTMLCanvasElement | null>
   fileName?: string
   canUndo?: boolean
   canRedo?: boolean
 }
  
-export function EditorToolbar({ onMenuAction, canvasRef, fileName, canUndo, canRedo }: EditorToolbarProps) {
+export function EditorToolbar({ onMenuAction, onExportRequested, canvasRef, fileName, canUndo, canRedo }: EditorToolbarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const handleMenuClick = (menuId: string) => {
@@ -62,20 +63,18 @@ export function EditorToolbar({ onMenuAction, canvasRef, fileName, canUndo, canR
     }
 
     try {
-      const exportSettings = settingsFeatures.loadExportSettings()
-      
       switch (actionId) {
         case 'save':
           if (canvas) await fileFeatures.saveCanvasAs(canvas, fileName || 'image.png')
           break
         case 'export-png':
-          if (canvas) await fileFeatures.exportCanvasAs(canvas, 'png', exportSettings.quality, fileName?.replace(/\.[^.]+$/, '.png') || 'export.png')
+          if (onExportRequested) onExportRequested('png')
           break
         case 'export-jpg':
-          if (canvas) await fileFeatures.exportCanvasAs(canvas, 'jpeg', exportSettings.quality, fileName?.replace(/\.[^.]+$/, '.jpg') || 'export.jpg')
+          if (onExportRequested) onExportRequested('jpeg')
           break
         case 'export-webp':
-          if (canvas) await fileFeatures.exportCanvasAs(canvas, 'webp', exportSettings.quality, fileName?.replace(/\.[^.]+$/, '.webp') || 'export.webp')
+          if (onExportRequested) onExportRequested('webp')
           break
         case 'upload-new':
           fileFeatures.triggerUpload(() => {

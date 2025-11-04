@@ -59,17 +59,19 @@
 
 @layer theme {
   :root {
-    --color-primary: #6366f1;
-    --color-primary-dark: #4f46e5;
-    --color-primary-light: #818cf8;
+    --color-primary: #6366f1; /* Indigo-500 */
+    --color-primary-dark: #4f46e5; /* Indigo-600 */
+    --color-primary-light: #818cf8; /* Indigo-400 */
     
-    --color-secondary: #10b981;
-    --color-secondary-dark: #059669;
-    --color-secondary-light: #34d399;
+    /* SECONDARY CHANGED to monochrome gray */
+    --color-secondary: #3f3f46; /* Zinc-700 */
+    --color-secondary-dark: #27272a; /* Zinc-800 */
+    --color-secondary-light: #52525b; /* Zinc-600 */
     
-    --color-accent: #f59e0b;
-    --color-accent-dark: #d97706;
-    --color-accent-light: #fbbf24;
+    /* ACCENT CHANGED to pink */
+    --color-accent: #ec4899; /* Pink-500 */
+    --color-accent-dark: #db2777; /* Pink-600 */
+    --color-accent-light: #f472b6; /* Pink-400 */
     
     /* Neutral Colors - Dark Mode (default) */
     --color-bg: #0d0d0d;
@@ -89,13 +91,15 @@
     --color-primary-dark: #5328c5;
     --color-primary-light: #7f5af0;
     
-    --color-secondary: #43E651;
-    --color-secondary-dark: #35b840;
-    --color-secondary-light: #5ff56f;
-
-    --color-accent: #E69143;
-    --color-accent-dark: #d17a2f;
-    --color-accent-light: #f0a858;
+    /* SECONDARY CHANGED to monochrome gray */
+    --color-secondary: #f4f4f5; /* Zinc-100 */
+    --color-secondary-dark: #e4e4e7; /* Zinc-200 */
+    --color-secondary-light: #ffffff;
+    
+    /* ACCENT CHANGED to pink */
+    --color-accent: #db2777; /* Pink-600 */
+    --color-accent-dark: #be185d; /* Pink-700 */
+    --color-accent-light: #ec4899; /* Pink-500 */
     
     /* Neutral Colors - Light Mode */
     --color-bg: #ffffff;
@@ -181,18 +185,20 @@
     background-color: var(--color-primary-dark);
   }
   
+  /* BTN-SECONDARY COMPLETELY REDEFINED */
   .btn-secondary {
-    background-color: var(--color-secondary);
-    color: var(--color-accent-dark);
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text);
     padding: 0.75rem 1.5rem;
     border-radius: 0.5rem;
     font-family: var(--font-primary);
     font-weight: 500;
-    transition: background-color 0.2s;
+    border: 1px solid var(--color-border);
+    transition: background-color 0.2s, border-color 0.2s;
   }
   
   .btn-secondary:hover {
-    background-color: var(--color-secondary-dark);
+    background-color: var(--color-border);
   }
 
   .btn-accent {

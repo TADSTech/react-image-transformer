@@ -27,6 +27,38 @@ export function DrawingTool({ isOpen, onClose, onApply, sourceCanvas }: DrawingT
     }
   }, [isOpen, sourceCanvas])
 
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault()
+      const syntheticEvent = e as unknown as React.TouchEvent<HTMLCanvasElement>
+      startDrawing(syntheticEvent)
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault()
+      const syntheticEvent = e as unknown as React.TouchEvent<HTMLCanvasElement>
+      draw(syntheticEvent)
+    }
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault()
+      stopDrawing()
+    }
+
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false })
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false })
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false })
+
+    return () => {
+      canvas.removeEventListener('touchstart', handleTouchStart)
+      canvas.removeEventListener('touchmove', handleTouchMove)
+      canvas.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [isOpen, isDrawing, lastPos, brushSize, color, tool])
+
   const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return null
@@ -53,7 +85,7 @@ export function DrawingTool({ isOpen, onClose, onApply, sourceCanvas }: DrawingT
   }
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
+    if ('button' in e && e.button !== 0) return // Only handle left mouse button
     const pos = getCanvasCoordinates(e)
     if (!pos) return
 
@@ -62,7 +94,6 @@ export function DrawingTool({ isOpen, onClose, onApply, sourceCanvas }: DrawingT
   }
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
     if (!isDrawing || !canvasRef.current) return
 
     const pos = getCanvasCoordinates(e)
@@ -116,13 +147,13 @@ export function DrawingTool({ isOpen, onClose, onApply, sourceCanvas }: DrawingT
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 pb-20 sm:pb-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
         <motion.div
-          className="bg-(--color-bg) rounded-lg w-full max-w-5xl max-h-[95vh] flex flex-col shadow-xl"
+          className="bg-(--color-bg) rounded-lg w-full max-w-5xl max-h-[calc(100vh-8rem)] flex flex-col shadow-xl"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
@@ -181,12 +212,12 @@ export function DrawingTool({ isOpen, onClose, onApply, sourceCanvas }: DrawingT
 
               {/* Color Palette */}
               {tool === 'pen' && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 max-w-full">
                   {colors.map((c) => (
                     <button
                       key={c}
                       onClick={() => setColor(c)}
-                      className={`w-8 h-8 rounded-full border-2 transition-all ${
+                      className={`w-8 h-8 rounded-full border-2 transition-all shrink-0 ${
                         color === c ? 'border-(--color-primary) scale-110' : 'border-transparent'
                       }`}
                       style={{ backgroundColor: c }}
@@ -196,7 +227,7 @@ export function DrawingTool({ isOpen, onClose, onApply, sourceCanvas }: DrawingT
                     type="color"
                     value={color}
                     onChange={(e) => setColor(e.target.value)}
-                    className="w-8 h-8 rounded-full cursor-pointer"
+                    className="w-8 h-8 rounded-full cursor-pointer shrink-0"
                   />
                 </div>
               )}
@@ -220,9 +251,6 @@ export function DrawingTool({ isOpen, onClose, onApply, sourceCanvas }: DrawingT
               onMouseMove={draw}
               onMouseUp={stopDrawing}
               onMouseLeave={stopDrawing}
-              onTouchStart={startDrawing}
-              onTouchMove={draw}
-              onTouchEnd={stopDrawing}
               className="max-w-full max-h-full border-2 border-(--color-border) rounded cursor-crosshair touch-none"
               style={{ imageRendering: 'pixelated' }}
             />

@@ -8,7 +8,7 @@ export default function TopBar() {
   return (
     <header className="flex items-center justify-between py-4 px-6 bg-(--color-bg) border-b border-(--color-border) shrink-0">
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-semibold text-(--color-text)">RI-Transformer</h1>
+        <h1 className="text-xl font-semibold text-(--color-text)">RI Transform</h1>
         {fileName && (
           <span className="text-sm text-(--color-text-secondary)">
             Editing: {fileName}

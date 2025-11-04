@@ -8,7 +8,6 @@ export default function About() {
 
   return (
     <main className="min-h-screen bg-(--color-bg) flex flex-col">
-      {/* Header with back button */}
       <header className="border-b border-(--color-border) p-4 sticky top-0 z-40 bg-(--color-bg)">
         <div className="max-w-3xl mx-2 flex items-center gap-4">
           <button
@@ -21,17 +20,16 @@ export default function About() {
          </div>
       </header>
 
-      {/* Main Content */}
       <div className="flex-1 p-4 pb-20">
         <div className="max-w-3xl mx-auto space-y-8">
-          {/* Hero Section */}
+        
           <section className="text-center py-8">
             <h2 className="text-4xl font-bold text-(--color-primary) mb-2">RI-Transformer</h2>
             <p className="text-lg text-(--color-text-secondary)">Reactive Image Transformer</p>
             <p className="text-sm text-(--color-text-secondary) mt-1">Version 1.0.0</p>
           </section>
 
-          {/* About Section */}
+
           <section className="p-6 bg-(--color-bg-secondary) rounded-lg">
             <h3 className="text-xl font-semibold text-(--color-text) mb-3">About</h3>
             <p className="text-(--color-text-secondary) leading-relaxed">
@@ -41,7 +39,6 @@ export default function About() {
             </p>
           </section>
 
-          {/* Features Section */}
           <section className="p-6 bg-(--color-bg-secondary) rounded-lg">
             <h3 className="text-xl font-semibold text-(--color-text) mb-4">Features</h3>
             <ul className="text-(--color-text-secondary) space-y-2">
@@ -72,7 +69,6 @@ export default function About() {
             </ul>
           </section>
 
-          {/* Technologies Section */}
           <section className="p-6 bg-(--color-bg-secondary) rounded-lg">
             <h3 className="text-xl font-semibold text-(--color-text) mb-4">Technologies</h3>
             <div className="flex flex-wrap gap-3">
@@ -87,7 +83,7 @@ export default function About() {
             </div>
           </section>
 
-          {/* Links Section */}
+
           <section className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href="https://github.com/tadstech/react-image-transformer"
@@ -100,15 +96,14 @@ export default function About() {
             </a>
             <a
               href="https://tadstech.web.app"
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-(--color-secondary) text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-(--color-secondary) text-primary rounded-lg hover:opacity-90 transition-opacity font-medium"
             >
               <Globe className="w-5 h-5" />
               Visit Website
             </a>
           </section>
 
-          {/* Footer */}
-          <section className="text-center py-8 border-t border-(--color-border)">
+          <section className="text-center py-2 border-t border-(--color-border)">
             <p className="text-xs text-(--color-text-secondary)">
               © 2025 Reactive Image Transformer. All rights reserved.
             </p>
