@@ -4,6 +4,8 @@ Reactive Image Transformer: A modern, web-based image editor built with React an
 
 Version 1.0.0
 
+![Screenshot](ReactIMGTransform_Promotional.png)
+
 ## About
 
 A modern, web-based image editor built with React and TypeScript. Transform, edit, and export your images with an intuitive interface and powerful tools. RI-Transformer is designed to be fast, responsive, and easy to use, whether you are working on a desktop or mobile device.
