@@ -14,12 +14,14 @@ import { ConfirmFilterModal } from '../components/ConfirmFilterModal'
 import { ExportConfirmModal } from '../components/ExportConfirmModal'
 import TopBar from '../components/TopBar'
 import { editFeatures, toolFeatures, settingsFeatures, filterFeatures, fileFeatures } from '../features'
+import { useScrollbarStyles } from 'stylisticscroll/react';
 
 export default function Editor() {
   const { state } = useLocation() as unknown as { state?: { previewUrl?: string; fileName?: string } }
   const navigate = useNavigate()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const originalImageRef = useRef<HTMLImageElement | null>(null)
+  useScrollbarStyles({ color: '#6366f1', width: '8px'});
 
   // Check for saved editor state from About page navigation
   const savedEditorState = (() => {
@@ -36,7 +38,7 @@ export default function Editor() {
   })()
 
   const previewUrl = savedEditorState?.canvasDataUrl || state?.previewUrl
-  const fileName = savedEditorState?.fileName || state?.fileName
+  const [fileName, setFileName] = useState(savedEditorState?.fileName || state?.fileName)
 
   const { setDirty, consumePending } = useUnsaved()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -196,6 +198,39 @@ export default function Editor() {
     } finally {
       setExportConfirmOpen(false)
     }
+  }
+
+  const handleUploadNew = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      if (result && canvasRef.current) {
+        const img = new Image()
+        img.onload = () => {
+          originalImageRef.current = img
+          canvasRef.current!.width = img.width
+          canvasRef.current!.height = img.height
+          
+          const ctx = canvasRef.current!.getContext('2d')!
+          ctx.drawImage(img, 0, 0)
+          
+          // Reset state for new image
+          const initialState: EditorState = {
+            transform: editFeatures.resetTransform(),
+            filters: defaultFilters,
+          }
+          const historyManager = new editFeatures.HistoryManager(initialState, undoLimit)
+          setHistory(historyManager)
+          setTransform(initialState.transform)
+          setFilters(initialState.filters)
+          setCanUndo(false)
+          setCanRedo(false)
+          setDirty(true)
+        }
+        img.src = result
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleToolbarAction = (actionId: string) => {
@@ -554,9 +589,13 @@ export default function Editor() {
     }
   }
 
+  const handleFileNameChange = (newFileName: string) => {
+    setFileName(newFileName)
+  }
+
   return (
     <div className="h-screen flex flex-col bg-(--color-bg)">
-      <TopBar />
+      <TopBar fileName={fileName} onFileNameChange={handleFileNameChange} />
       <main className="flex-1 overflow-hidden flex">
         <div className="flex-1 flex items-center justify-center p-4 pb-20 relative">
           {previewUrl ? (
@@ -745,7 +784,7 @@ export default function Editor() {
           onCancel={() => setExportConfirmOpen(false)}
         />
         
-        <EditorToolbar onMenuAction={handleToolbarAction} onExportRequested={handleExportRequested} canvasRef={canvasRef} fileName={fileName} canUndo={canUndo} canRedo={canRedo} />
+        <EditorToolbar onMenuAction={handleToolbarAction} onExportRequested={handleExportRequested} onUploadRequested={handleUploadNew} canvasRef={canvasRef} fileName={fileName} canUndo={canUndo} canRedo={canRedo} />
       </main>
     </div>
   )

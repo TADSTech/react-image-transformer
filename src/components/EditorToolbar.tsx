@@ -26,13 +26,14 @@ export interface SubMenuItem {
 interface EditorToolbarProps {
   onMenuAction?: (actionId: string) => void
   onExportRequested?: (format: 'png' | 'jpeg' | 'webp') => void
+  onUploadRequested?: (file: File) => void
   canvasRef?: React.RefObject<HTMLCanvasElement | null>
   fileName?: string
   canUndo?: boolean
   canRedo?: boolean
 }
  
-export function EditorToolbar({ onMenuAction, onExportRequested, canvasRef, fileName, canUndo, canRedo }: EditorToolbarProps) {
+export function EditorToolbar({ onMenuAction, onExportRequested, onUploadRequested, canvasRef, fileName, canUndo, canRedo }: EditorToolbarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const handleMenuClick = (menuId: string) => {
@@ -77,8 +78,8 @@ export function EditorToolbar({ onMenuAction, onExportRequested, canvasRef, file
           if (onExportRequested) onExportRequested('webp')
           break
         case 'upload-new':
-          fileFeatures.triggerUpload(() => {
-            if (onMenuAction) onMenuAction('upload-new')
+          fileFeatures.triggerUpload((file) => {
+            if (onUploadRequested) onUploadRequested(file)
           })
           break
       }
